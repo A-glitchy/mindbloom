@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MindBloom 🌸 Mood &amp; Cycle Tracker</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --color-canvas: #FEF9C3;
+  --color-container: #FEF08A;
+  --color-primary: #1E3A8A;
+  --color-accent: #2563EB;
+  --color-pink: #FBCFE8;
+  --color-pink-deep: #DB2777;
+  --radius-lg: 1.75rem;
+  --radius-md: 1.25rem;
+}
+* { box-sizing: border-box; }
+body { margin:0; font-family:'Nunito',sans-serif; background:var(--color-canvas); color:var(--color-primary); transition:background .4s ease; }
+h1,h2,.header-title,.card-title,.stat-num { font-family:'Fredoka',sans-serif; }
+
+.header-bar { background:var(--color-primary); padding:.9rem 1rem; border-bottom-left-radius:1.5rem; border-bottom-right-radius:1.5rem; box-shadow:0 4px 14px rgba(30,58,138,.25); position:sticky; top:0; z-index:20; }
+.header-inner { max-width:42rem; margin:0 auto; display:flex; align-items:center; justify-content:space-between; }
+.header-bloom { font-size:1.6rem; }
+.header-title { color:#FEF9C3; font-size:1.4rem; font-weight:700; letter-spacing:.02em; }
+.icon-btn { background:rgba(255,255,255,.15); color:#FEF9C3; border:none; border-radius:999px; width:2.4rem; height:2.4rem; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .15s ease, background .2s ease; }
+.icon-btn:hover { background:rgba(255,255,255,.28); transform:scale(1.08); }
+.date-pill { display:inline-block; background:var(--color-primary); color:#FEF9C3; font-weight:700; font-family:'Fredoka',sans-serif; padding:.4rem 1rem; border-radius:999px; font-size:.95rem; }
+
+.card { background:var(--color-container); border-radius:var(--radius-lg); padding:1.25rem 1.25rem 1.4rem; box-shadow:0 6px 0 rgba(30,58,138,.12), 0 8px 20px rgba(30,58,138,.08); border:3px solid rgba(30,58,138,.08); }
+.card-period { background:linear-gradient(160deg, var(--color-pink), #fde4f0); border-color:rgba(219,39,119,.15); }
+.card-title { font-size:1.05rem; font-weight:600; color:var(--color-primary); margin-bottom:.75rem; }
+.label-sm { font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; opacity:.65; }
+
+.bloom-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:.5rem; }
+.bloom-btn { background:transparent; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:.3rem; padding:.35rem .1rem; border-radius:var(--radius-md); position:relative; transition:transform .15s ease; }
+.bloom-btn:hover { transform:scale(1.12) rotate(-3deg); }
+.bloom-btn.selected { background:rgba(30,58,138,.08); transform:scale(1.08); }
+.bloom-btn svg { width:3rem; height:3rem; display:block; }
+.bloom-btn span { font-size:.68rem; font-weight:700; color:var(--color-primary); opacity:.75; }
+@keyframes bloomSway { 0%,100%{transform:rotate(0deg) translateY(0);} 30%{transform:rotate(-6deg) translateY(-4px);} 60%{transform:rotate(5deg) translateY(0);} }
+.bloom-btn:hover svg { animation:bloomSway .6s ease; }
+
+.activity-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; }
+.activity-btn { background:#fff; border:2px solid rgba(30,58,138,.08); border-radius:1.1rem; padding:.6rem .3rem; display:flex; flex-direction:column; align-items:center; gap:.3rem; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
+.activity-btn:hover { transform:translateY(-3px); box-shadow:0 4px 10px rgba(30,58,138,.15); }
+.activity-btn.selected { background:var(--color-accent); border-color:var(--color-accent); }
+.activity-btn.selected .activity-icon-wrap { background:rgba(255,255,255,.25) !important; }
+.activity-btn.selected span { color:#fff; }
+.activity-icon-wrap { width:2.4rem; height:2.4rem; border-radius:999px; display:flex; align-items:center; justify-content:center; }
+.activity-btn span { font-size:.68rem; font-weight:700; color:var(--color-primary); text-align:center; }
+
+.flow-row,.symptom-row { display:flex; gap:.5rem; flex-wrap:wrap; }
+.flow-chip,.symptom-chip { background:#fff; border:2px solid rgba(219,39,119,.15); border-radius:999px; padding:.4rem .9rem; font-size:.8rem; font-weight:700; color:var(--color-pink-deep); cursor:pointer; transition:all .15s ease; }
+.flow-chip.selected,.symptom-chip.selected { background:var(--color-pink-deep); color:#fff; border-color:var(--color-pink-deep); }
+
+.soft-textarea { width:100%; border-radius:1rem; border:2px solid rgba(30,58,138,.1); padding:.7rem .9rem; font-family:'Nunito',sans-serif; font-size:.9rem; resize:vertical; background:#fff; }
+.soft-textarea:focus,.gratitude-input:focus { outline:2px solid var(--color-accent); outline-offset:1px; }
+.gratitude-input { width:100%; border-radius:999px; border:2px solid rgba(30,58,138,.1); padding:.5rem 1rem; font-size:.85rem; background:#fff; }
+.drop-zone { border:2px dashed rgba(30,58,138,.35); border-radius:1.2rem; padding:1.2rem; display:flex; flex-direction:column; align-items:center; cursor:pointer; color:var(--color-primary); transition:background .2s ease; }
+.drop-zone.dragover { background:rgba(37,99,235,.08); }
+.photo-preview { width:100%; max-height:220px; object-fit:cover; border-radius:1.2rem; border:3px solid rgba(30,58,138,.1); }
+
+.chip-btn-small { display:inline-flex; align-items:center; gap:.3rem; background:#fff; border:2px solid rgba(30,58,138,.12); border-radius:999px; padding:.35rem .8rem; font-size:.78rem; font-weight:700; color:var(--color-primary); cursor:pointer; }
+.chip-btn-small:hover { background:rgba(30,58,138,.06); }
+.export-btn-hero { width:100%; background:var(--color-pink-deep); color:#fff; font-family:'Fredoka',sans-serif; font-weight:600; font-size:.95rem; padding:.8rem; border-radius:999px; border:none; display:flex; align-items:center; justify-content:center; gap:.5rem; cursor:pointer; box-shadow:0 5px 0 rgba(0,0,0,.12); }
+.export-btn-hero:active { transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,.12); }
+.save-btn { width:100%; background:var(--color-primary); color:#FEF9C3; font-family:'Fredoka',sans-serif; font-weight:600; font-size:1rem; padding:.9rem; border-radius:999px; border:none; display:flex; align-items:center; justify-content:center; gap:.5rem; cursor:pointer; box-shadow:0 5px 0 rgba(0,0,0,.15); transition:transform .1s ease; }
+.save-btn:active { transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,.15); }
+
+.bottom-nav { position:fixed; bottom:.9rem; left:50%; transform:translateX(-50%); background:var(--color-primary); border-radius:999px; display:flex; gap:.3rem; padding:.4rem; box-shadow:0 8px 24px rgba(30,58,138,.35); z-index:30; }
+.nav-btn { background:transparent; border:none; color:#c7d2fe; display:flex; flex-direction:column; align-items:center; gap:.1rem; padding:.5rem 1.1rem; border-radius:999px; cursor:pointer; font-size:.65rem; font-weight:700; }
+.nav-btn i { width:20px; height:20px; }
+.nav-btn.active { background:#FEF9C3; color:var(--color-primary); }
+
+.calendar-weekdays { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:.7rem; font-weight:700; opacity:.5; margin-bottom:.4rem; }
+.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:.35rem; }
+.cal-day { aspect-ratio:1; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; background:rgba(255,255,255,.5); border:2px solid rgba(30,58,138,.08); position:relative; color:var(--color-primary); }
+.cal-day.empty { background:transparent; border:none; }
+.cal-day.logged { border:none; }
+.cal-day.logged svg { width:100%; height:100%; }
+.cal-day.period-day::after { content:''; position:absolute; inset:-3px; border-radius:999px; border:2px dashed var(--color-pink-deep); }
+.cal-day.today-marker { box-shadow:0 0 0 2px var(--color-accent); }
+
+.stat-box { background:#fff; border-radius:1rem; padding:.8rem; display:flex; flex-direction:column; align-items:center; border:2px solid rgba(30,58,138,.08); }
+.stat-num { font-size:1.5rem; font-weight:700; color:var(--color-accent); }
+.stat-label { font-size:.68rem; font-weight:700; opacity:.6; text-transform:uppercase; }
+.toggle-wrap { display:flex; align-items:center; gap:.35rem; font-weight:700; opacity:.75; }
+
+.settings-overlay { position:fixed; inset:0; background:rgba(30,58,138,.35); z-index:40; display:flex; justify-content:flex-end; }
+.settings-drawer { background:var(--color-canvas); width:min(420px,92vw); height:100%; overflow-y:auto; padding:1.25rem; box-shadow:-8px 0 24px rgba(0,0,0,.2); }
+.settings-section { background:var(--color-container); border-radius:1.25rem; padding:1rem; margin-bottom:1rem; border:2px solid rgba(30,58,138,.08); }
+.settings-heading { font-family:'Fredoka',sans-serif; font-weight:600; margin-bottom:.6rem; color:var(--color-primary); }
+.theme-row { display:flex; align-items:center; justify-content:space-between; padding:.35rem 0; font-size:.85rem; font-weight:700; }
+.theme-row input[type="color"] { width:2.5rem; height:1.8rem; border:none; border-radius:.5rem; cursor:pointer; background:none; }
+.mood-edit-row,.activity-edit-row { display:flex; align-items:center; gap:.5rem; background:#fff; border-radius:.9rem; padding:.4rem .6rem; }
+.mood-edit-row input[type="text"],.activity-edit-row input[type="text"] { flex:1; border:none; background:transparent; font-size:.85rem; font-weight:700; color:var(--color-primary); outline:none; }
+.mood-edit-row input[type="number"] { width:3rem; border:1px solid rgba(30,58,138,.15); border-radius:.5rem; text-align:center; font-size:.8rem; }
+.mood-edit-row input[type="color"] { width:1.7rem; height:1.7rem; border:none; border-radius:50%; padding:0; cursor:pointer; }
+.icon-x-btn { background:none; border:none; color:#dc2626; cursor:pointer; padding:.2rem; }
+
+.toast { position:fixed; bottom:5.5rem; left:50%; transform:translateX(-50%); background:var(--color-primary); color:#FEF9C3; padding:.6rem 1.2rem; border-radius:999px; font-weight:700; font-size:.85rem; z-index:50; box-shadow:0 6px 16px rgba(0,0,0,.2); }
+.confetti-canvas { position:fixed; inset:0; pointer-events:none; z-index:60; }
+.view-panel.hidden,.hidden { display:none !important; }
+@media (max-width:420px){ .bloom-grid{gap:.3rem;} .activity-grid{grid-template-columns:repeat(3,1fr);} }
+</style>
+</head>
+<body>
+
+<div id="app" class="min-h-screen pb-28">
+
+  <header class="header-bar">
+    <div class="header-inner">
+      <div class="flex items-center gap-2">
+        <span class="header-bloom">🌸</span>
+        <h1 class="header-title">MindBloom</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" aria-label="Open settings"><i data-lucide="settings-2"></i></button>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 pt-5 space-y-5">
+
+    <section id="view-today" class="view-panel space-y-5">
+      <div class="date-pill" id="todayDateLabel"></div>
+
+      <div class="card">
+        <h2 class="card-title">How's your bloom feeling today?</h2>
+        <div id="bloomGrid" class="bloom-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="card-title !mb-0">What did you get up to?</h2>
+          <button id="addActivityBtn" class="chip-btn-small"><i data-lucide="plus" class="w-4 h-4"></i> Add</button>
+        </div>
+        <div id="activityGrid" class="activity-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">📓 Today's journal</h2>
+        <textarea id="journalText" rows="3" placeholder="Write a little bit about today..." class="soft-textarea"></textarea>
+        <p class="label-sm mt-4 mb-2">✨ 3 things I'm grateful for</p>
+        <div class="space-y-2" id="gratitudeList"></div>
+        <p class="label-sm mt-4 mb-2">📸 Add a picture</p>
+        <div id="dropZone" class="drop-zone">
+          <i data-lucide="image-plus" class="w-7 h-7 opacity-60"></i>
+          <span class="text-sm opacity-70 mt-1">Drop an image or tap to upload</span>
+          <input type="file" id="photoInput" accept="image/*" class="hidden">
+        </div>
+        <div id="photoPreviewWrap" class="hidden mt-3">
+          <img id="photoPreview" class="photo-preview" alt="Uploaded memory"/>
+          <button id="removePhotoBtn" class="chip-btn-small mt-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Remove</button>
+        </div>
+      </div>
+
+      <button id="saveLogBtn" class="save-btn"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Save today's log</button>
+      <button id="exportHeroBtn" class="export-btn-hero"><i data-lucide="download" class="w-4 h-4"></i> Export my data (JSON)</button>
+    </section>
+
+    <section id="view-period" class="view-panel hidden space-y-5">
+      <div class="card card-period">
+        <h2 class="card-title text-pink-700">🌷 Today's flow &amp; symptoms</h2>
+        <p class="label-sm mb-2">Flow level</p>
+        <div id="flowRow" class="flow-row"></div>
+        <p class="label-sm mt-4 mb-2">Symptoms</p>
+        <div id="symptomRow" class="symptom-row"></div>
+        <button id="savePeriodBtn" class="save-btn mt-4"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Save</button>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <button id="prevMonthBtn" class="icon-btn"><i data-lucide="chevron-left"></i></button>
+          <h2 class="card-title !mb-0" id="calendarMonthLabel"></h2>
+          <button id="nextMonthBtn" class="icon-btn"><i data-lucide="chevron-right"></i></button>
+        </div>
+        <div class="calendar-weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </div>
+      <div class="card card-period">
+        <h2 class="card-title text-pink-700">🌺 Cycle overview</h2>
+        <p class="text-sm opacity-80 leading-relaxed" id="cycleSummary"></p>
+      </div>
+    </section>
+
+    <section id="view-cbt" class="view-panel hidden space-y-5">
+      <div class="card">
+        <h2 class="card-title">🌱 CBT Exercises</h2>
+        <p class="text-sm opacity-75">Pick an exercise below. Your answers save automatically to today's log.</p>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">📝 Thought Record</h2>
+        <p class="label-sm mb-1">Situation</p>
+        <textarea id="cbtSituation" rows="2" class="soft-textarea" placeholder="What happened?"></textarea>
+        <p class="label-sm mt-3 mb-1">Automatic thought</p>
+        <textarea id="cbtThought" rows="2" class="soft-textarea" placeholder="What went through your mind?"></textarea>
+        <p class="label-sm mt-3 mb-1">Evidence for</p>
+        <textarea id="cbtEvidenceFor" rows="2" class="soft-textarea" placeholder="What supports this thought?"></textarea>
+        <p class="label-sm mt-3 mb-1">Evidence against</p>
+        <textarea id="cbtEvidenceAgainst" rows="2" class="soft-textarea" placeholder="What doesn't fit this thought?"></textarea>
+        <p class="label-sm mt-3 mb-1">Balanced thought</p>
+        <textarea id="cbtBalanced" rows="2" class="soft-textarea" placeholder="A more balanced way to see it..."></textarea>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">🔍 Common thinking traps</h2>
+        <div id="distortionList" class="symptom-row"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">🌬️ 5-4-3-2-1 Grounding</h2>
+        <p class="label-sm mb-1">5 things you can see</p>
+        <input class="gratitude-input" id="g5" placeholder="...">
+        <p class="label-sm mt-3 mb-1">4 things you can touch</p>
+        <input class="gratitude-input" id="g4" placeholder="...">
+        <p class="label-sm mt-3 mb-1">3 things you can hear</p>
+        <input class="gratitude-input" id="g3" placeholder="...">
+        <p class="label-sm mt-3 mb-1">2 things you can smell</p>
+        <input class="gratitude-input" id="g2" placeholder="...">
+        <p class="label-sm mt-3 mb-1">1 thing you can taste</p>
+        <input class="gratitude-input" id="g1" placeholder="...">
+      </div>
+
+      <button id="saveCbtBtn" class="save-btn"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Save CBT notes</button>
+    </section>
+
+    <section id="view-insights" class="view-panel hidden space-y-5">
+      <div class="card">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="card-title !mb-0">📈 Mood over time</h2>
+          <label class="toggle-wrap text-xs"><input type="checkbox" id="periodOverlayToggle"><span>Period overlay</span></label>
+        </div>
+        <canvas id="moodChart" height="180"></canvas>
+      </div>
+      <div class="card">
+        <h2 class="card-title">🏷️ Activities logged</h2>
+        <canvas id="activityChart" height="180"></canvas>
+      </div>
+      <div class="card grid grid-cols-2 gap-3">
+        <div class="stat-box"><span class="stat-num" id="statStreak">0</span><span class="stat-label">Day streak</span></div>
+        <div class="stat-box"><span class="stat-num" id="statAvg">0</span><span class="stat-label">Avg mood /10</span></div>
+        <div class="stat-box"><span class="stat-num" id="statEntries">0</span><span class="stat-label">Entries logged</span></div>
+        <div class="stat-box"><span class="stat-num" id="statCycle">–</span><span class="stat-label">Avg cycle length</span></div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="today"><i data-lucide="house"></i><span>Today</span></button>
+    <button class="nav-btn" data-view="period"><i data-lucide="calendar-days"></i><span>Period</span></button>
+    <button class="nav-btn" data-view="cbt"><i data-lucide="brain"></i><span>CBT</span></button>
+    <button class="nav-btn" data-view="insights"><i data-lucide="bar-chart-3"></i><span>Insights</span></button>
+  </nav>
+
+  <div id="settingsOverlay" class="settings-overlay hidden">
+    <div class="settings-drawer">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="card-title !mb-0">⚙️ Settings</h2>
+        <button id="closeSettingsBtn" class="icon-btn"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🎨 Theme colors</h3>
+        <div class="theme-row"><label>Canvas</label><input type="color" id="colorCanvas" value="#FEF9C3"></div>
+        <div class="theme-row"><label>Container</label><input type="color" id="colorContainer" value="#FEF08A"></div>
+        <div class="theme-row"><label>Primary</label><input type="color" id="colorPrimary" value="#1E3A8A"></div>
+        <div class="theme-row"><label>Accent</label><input type="color" id="colorAccent" value="#2563EB"></div>
+        <button id="resetThemeBtn" class="chip-btn-small mt-2">Reset to default</button>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🌸 Edit moods</h3>
+        <div id="moodEditList" class="space-y-2"></div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">🏷️ Manage activities</h3>
+        <div id="activityEditList" class="space-y-2"></div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="settings-heading">💾 Data</h3>
+        <p class="text-xs opacity-70 mb-2">MindBloom saves everything on this device only. Export regularly to keep a backup copy of your data.</p>
+        <div class="flex gap-2 flex-wrap">
+          <button id="exportBtn" class="chip-btn-small"><i data-lucide="download" class="w-4 h-4"></i> Export JSON</button>
+          <label class="chip-btn-small cursor-pointer"><i data-lucide="upload" class="w-4 h-4"></i> Import JSON<input type="file" id="importInput" accept="application/json" class="hidden"></label>
+          <button id="clearDataBtn" class="chip-btn-small !text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i> Clear all data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+</div>
+
+<script>
+/* ======================= MINDBLOOM APP ======================= */
+const LS_KEYS = { logs: 'mindbloom_logs', settings: 'mindbloom_settings' };
+
+const DEFAULT_MOODS = [
+  { id: 'joyful',  name: 'Joyful',  color: '#F472B6', points: 10, petals: 8 },
+  { id: 'good',    name: 'Good',    color: '#FDE047', points: 8,  petals: 6 },
+  { id: 'neutral', name: 'Neutral', color: '#FDBA74', points: 5,  petals: 5 },
+  { id: 'moody',   name: 'Moody',   color: '#A5B4FC', points: 3,  petals: 4 },
+  { id: 'sad',     name: 'Sad',     color: '#93C5FD', points: 1,  petals: 3 },
+];
+
+const DEFAULT_ACTIVITIES = [
+  { id: 'work',     name: 'Work',      icon: 'briefcase',   color: '#DBEAFE' },
+  { id: 'workout',  name: 'Workout',   icon: 'dumbbell',    color: '#DCFCE7' },
+  { id: 'reading',  name: 'Reading',   icon: 'book-open',   color: '#FEF3C7' },
+  { id: 'sleep',    name: 'Sleep',     icon: 'moon',        color: '#E0E7FF' },
+  { id: 'fastfood', name: 'Fast Food', icon: 'pizza',       color: '#FFE4E6' },
+  { id: 'friends',  name: 'Friends',   icon: 'users',       color: '#FCE7F3' },
+  { id: 'outdoors', name: 'Outdoors',  icon: 'trees',       color: '#D1FAE5' },
+  { id: 'selfcare', name: 'Self-care', icon: 'sparkles',    color: '#FEF9C3' },
+];
+
+const FLOW_LEVELS = ['None', 'Light', 'Medium', 'Heavy'];
+const SYMPTOMS = ['Cramps', 'Bloating', 'Tired', 'Moody'];
+const DISTORTIONS = ['All-or-nothing', 'Catastrophizing', 'Mind reading', 'Overgeneralizing', 'Should statements', 'Emotional reasoning'];
+const DEFAULT_THEME = { canvas: '#FEF9C3', container: '#FEF08A', primary: '#1E3A8A', accent: '#2563EB' };
+
+function safeLucide() {
+  try {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+  } catch (e) { console.warn('Icon render skipped:', e); }
+}
+
+let state = { logs: {}, moods: DEFAULT_MOODS, activities: DEFAULT_ACTIVITIES, theme: DEFAULT_THEME };
+let draft = {
+  moodId: null, activities: [], flow: 'None', symptoms: [], gratitude: ['', '', ''], journal: '', photo: null,
+  cbt: { situation: '', thought: '', evidenceFor: '', evidenceAgainst: '', balanced: '', distortions: [], grounding: { g5:'', g4:'', g3:'', g2:'', g1:'' } },
+};
+let calendarCursor = new Date();
+
+function todayKey(d = new Date()) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function fmtDateLong(d) { return d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' }); }
+function saveLogs() { localStorage.setItem(LS_KEYS.logs, JSON.stringify(state.logs)); }
+function saveSettings() { localStorage.setItem(LS_KEYS.settings, JSON.stringify({ moods: state.moods, activities: state.activities, theme: state.theme })); }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add('hidden'), 2200);
+}
+
+/* ---------------------- FLOWER SVG RENDERER ---------------------- */
+function flowerSVG(mood, size = 48) {
+  const c = mood.color;
+  const petalCount = mood.petals || 5;
+  let petals = '';
+  for (let i = 0; i < petalCount; i++) {
+    const angle = (360 / petalCount) * i;
+    petals += `<ellipse cx="30" cy="14" rx="8" ry="13" fill="${c}" transform="rotate(${angle} 30 30)" stroke="#00000012" stroke-width="0.5"/>`;
+  }
+  let face = '';
+  if (mood.id === 'joyful') face = `<path d="M25 32 Q30 37 35 32" stroke="#5b4636" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  else if (mood.id === 'good') face = `<path d="M26 31 Q30 34 34 31" stroke="#5b4636" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  else if (mood.id === 'neutral') face = `<line x1="26" y1="32" x2="34" y2="32" stroke="#5b4636" stroke-width="1.8" stroke-linecap="round"/>`;
+  else if (mood.id === 'moody') face = `<path d="M26 34 Q30 30 34 34" stroke="#5b4636" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  else if (mood.id === 'sad') face = `<path d="M25 35 Q30 29 35 35" stroke="#5b4636" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  return `
+  <svg viewBox="0 0 60 60" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <line x1="30" y1="42" x2="30" y2="56" stroke="#86efac" stroke-width="3" stroke-linecap="round"/>
+    <path d="M30 50 Q22 48 20 42" stroke="#86efac" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <g>${petals}</g>
+    <circle cx="30" cy="30" r="9" fill="#FDE68A" stroke="#00000012"/>
+    <circle cx="26" cy="28" r="1.8" fill="#5b4636"/>
+    <circle cx="34" cy="28" r="1.8" fill="#5b4636"/>
+    ${face}
+  </svg>`;
+}
+
+/* ---------------------- INITIAL HYDRATION ---------------------- */
+function seedMockData() {
+  const moodSeq = ['joyful','good','neutral','moody','sad','good','joyful'];
+  const acts = state.activities.map(a => a.id);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = todayKey(d);
+    const flow = i === 5 ? 'Medium' : i === 4 ? 'Light' : 'None';
+    state.logs[key] = {
+      moodId: moodSeq[6 - i],
+      activities: [acts[i % acts.length], acts[(i + 2) % acts.length]],
+      flow,
+      symptoms: flow !== 'None' ? ['Cramps', 'Tired'] : [],
+      gratitude: ['My cozy blanket', 'A good cup of tea', 'A message from a friend'],
+      journal: 'A pretty ordinary day, but a good one overall. 🌸',
+      photo: null,
+    };
+  }
+  saveLogs();
+}
+
+function loadState() {
+  const rawLogs = localStorage.getItem(LS_KEYS.logs);
+  const rawSettings = localStorage.getItem(LS_KEYS.settings);
+  if (rawSettings) {
+    try {
+      const s = JSON.parse(rawSettings);
+      state.moods = s.moods || DEFAULT_MOODS;
+      state.activities = s.activities || DEFAULT_ACTIVITIES;
+      state.theme = s.theme || DEFAULT_THEME;
+    } catch (e) {}
+  }
+  if (rawLogs) { try { state.logs = JSON.parse(rawLogs); } catch (e) { state.logs = {}; } }
+  if (!rawLogs || Object.keys(state.logs).length === 0) seedMockData();
+  applyTheme();
+}
+
+function applyTheme() {
+  const r = document.documentElement;
+  r.style.setProperty('--color-canvas', state.theme.canvas);
+  r.style.setProperty('--color-container', state.theme.container);
+  r.style.setProperty('--color-primary', state.theme.primary);
+  r.style.setProperty('--color-accent', state.theme.accent);
+  document.getElementById('colorCanvas').value = state.theme.canvas;
+  document.getElementById('colorContainer').value = state.theme.container;
+  document.getElementById('colorPrimary').value = state.theme.primary;
+  document.getElementById('colorAccent').value = state.theme.accent;
+}
+
+function loadDraftFromLog(key) {
+  const existing = state.logs[key];
+  if (existing) {
+    draft = {
+      moodId: existing.moodId || null,
+      activities: [...(existing.activities || [])],
+      flow: existing.flow || 'None',
+      symptoms: [...(existing.symptoms || [])],
+      gratitude: existing.gratitude ? [...existing.gratitude] : ['', '', ''],
+      journal: existing.journal || '',
+      photo: existing.photo || null,
+      cbt: existing.cbt ? JSON.parse(JSON.stringify(existing.cbt)) : { situation:'', thought:'', evidenceFor:'', evidenceAgainst:'', balanced:'', distortions:[], grounding:{g5:'',g4:'',g3:'',g2:'',g1:''} },
+    };
+  } else {
+    draft = {
+      moodId: null, activities: [], flow: 'None', symptoms: [], gratitude: ['', '', ''], journal: '', photo: null,
+      cbt: { situation:'', thought:'', evidenceFor:'', evidenceAgainst:'', balanced:'', distortions:[], grounding:{g5:'',g4:'',g3:'',g2:'',g1:''} },
+    };
+  }
+}
+
+function renderToday() {
+  document.getElementById('todayDateLabel').textContent = fmtDateLong(new Date());
+
+  const bloomGrid = document.getElementById('bloomGrid');
+  bloomGrid.innerHTML = '';
+  state.moods.forEach(mood => {
+    const btn = document.createElement('button');
+    btn.className = 'bloom-btn' + (draft.moodId === mood.id ? ' selected' : '');
+    btn.innerHTML = flowerSVG(mood, 48) + `<span>${mood.name}</span>`;
+    btn.addEventListener('click', (e) => {
+      draft.moodId = mood.id;
+      renderToday();
+      launchConfetti(e.clientX, e.clientY, mood.color);
+    });
+    bloomGrid.appendChild(btn);
+  });
+
+  const actGrid = document.getElementById('activityGrid');
+  actGrid.innerHTML = '';
+  state.activities.forEach(act => {
+    const selected = draft.activities.includes(act.id);
+    const btn = document.createElement('button');
+    btn.className = 'activity-btn' + (selected ? ' selected' : '');
+    btn.innerHTML = `<span class="activity-icon-wrap" style="background:${act.color}"><i data-lucide="${act.icon}" style="width:1.1rem;height:1.1rem;color:#1E3A8A"></i></span><span>${act.name}</span>`;
+    btn.addEventListener('click', () => {
+      if (selected) draft.activities = draft.activities.filter(x => x !== act.id);
+      else draft.activities.push(act.id);
+      renderToday();
+    });
+    actGrid.appendChild(btn);
+  });
+
+  const journalEl = document.getElementById('journalText');
+  journalEl.value = draft.journal;
+  journalEl.oninput = (e) => { draft.journal = e.target.value; };
+
+  const gratWrap = document.getElementById('gratitudeList');
+  gratWrap.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const input = document.createElement('input');
+    input.type = 'text'; input.className = 'gratitude-input';
+    input.placeholder = `Grateful for #${i+1}...`;
+    input.value = draft.gratitude[i] || '';
+    input.addEventListener('input', (e) => { draft.gratitude[i] = e.target.value; });
+    gratWrap.appendChild(input);
+  }
+
+  const previewWrap = document.getElementById('photoPreviewWrap');
+  const preview = document.getElementById('photoPreview');
+  if (draft.photo) { previewWrap.classList.remove('hidden'); preview.src = draft.photo; }
+  else previewWrap.classList.add('hidden');
+
+  safeLucide();
+}
+
+function handlePhotoFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 480;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale; canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      draft.photo = canvas.toDataURL('image/jpeg', 0.7);
+      renderToday();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveTodayLog() {
+  if (!draft.moodId) { toast('Pick a bloom mood first! 🌸'); return; }
+  const key = todayKey();
+  const existing = state.logs[key] || {};
+  state.logs[key] = {
+    ...existing,
+    moodId: draft.moodId,
+    activities: [...draft.activities],
+    gratitude: [...draft.gratitude],
+    journal: draft.journal,
+    photo: draft.photo,
+  };
+  saveLogs();
+  toast('Saved today\'s log! 🎉');
+  try { renderCalendar(); } catch (e) { console.warn('Calendar render skipped:', e); }
+  try { renderInsights(); } catch (e) { console.warn('Insights render skipped:', e); }
+}
+
+function renderPeriod() {
+  const flowRow = document.getElementById('flowRow');
+  flowRow.innerHTML = '';
+  FLOW_LEVELS.forEach(level => {
+    const btn = document.createElement('button');
+    btn.className = 'flow-chip' + (draft.flow === level ? ' selected' : '');
+    btn.textContent = level;
+    btn.addEventListener('click', () => { draft.flow = level; renderPeriod(); });
+    flowRow.appendChild(btn);
+  });
+
+  const symptomRow = document.getElementById('symptomRow');
+  symptomRow.innerHTML = '';
+  SYMPTOMS.forEach(sym => {
+    const active = draft.symptoms.includes(sym);
+    const btn = document.createElement('button');
+    btn.className = 'symptom-chip' + (active ? ' selected' : '');
+    btn.textContent = sym;
+    btn.addEventListener('click', () => {
+      if (active) draft.symptoms = draft.symptoms.filter(x => x !== sym);
+      else draft.symptoms.push(sym);
+      renderPeriod();
+    });
+    symptomRow.appendChild(btn);
+  });
+}
+
+function savePeriodLog() {
+  const key = todayKey();
+  const existing = state.logs[key] || {};
+  state.logs[key] = { ...existing, flow: draft.flow, symptoms: [...draft.symptoms] };
+  saveLogs();
+  toast('Period info saved! 🌷');
+  renderCalendar();
+}
+
+function renderCbt() {
+  document.getElementById('cbtSituation').value = draft.cbt.situation;
+  document.getElementById('cbtThought').value = draft.cbt.thought;
+  document.getElementById('cbtEvidenceFor').value = draft.cbt.evidenceFor;
+  document.getElementById('cbtEvidenceAgainst').value = draft.cbt.evidenceAgainst;
+  document.getElementById('cbtBalanced').value = draft.cbt.balanced;
+  document.getElementById('g5').value = draft.cbt.grounding.g5;
+  document.getElementById('g4').value = draft.cbt.grounding.g4;
+  document.getElementById('g3').value = draft.cbt.grounding.g3;
+  document.getElementById('g2').value = draft.cbt.grounding.g2;
+  document.getElementById('g1').value = draft.cbt.grounding.g1;
+
+  document.getElementById('cbtSituation').oninput = e => draft.cbt.situation = e.target.value;
+  document.getElementById('cbtThought').oninput = e => draft.cbt.thought = e.target.value;
+  document.getElementById('cbtEvidenceFor').oninput = e => draft.cbt.evidenceFor = e.target.value;
+  document.getElementById('cbtEvidenceAgainst').oninput = e => draft.cbt.evidenceAgainst = e.target.value;
+  document.getElementById('cbtBalanced').oninput = e => draft.cbt.balanced = e.target.value;
+  document.getElementById('g5').oninput = e => draft.cbt.grounding.g5 = e.target.value;
+  document.getElementById('g4').oninput = e => draft.cbt.grounding.g4 = e.target.value;
+  document.getElementById('g3').oninput = e => draft.cbt.grounding.g3 = e.target.value;
+  document.getElementById('g2').oninput = e => draft.cbt.grounding.g2 = e.target.value;
+  document.getElementById('g1').oninput = e => draft.cbt.grounding.g1 = e.target.value;
+
+  const distWrap = document.getElementById('distortionList');
+  distWrap.innerHTML = '';
+  DISTORTIONS.forEach(d => {
+    const active = draft.cbt.distortions.includes(d);
+    const btn = document.createElement('button');
+    btn.className = 'symptom-chip' + (active ? ' selected' : '');
+    btn.textContent = d;
+    btn.addEventListener('click', () => {
+      if (active) draft.cbt.distortions = draft.cbt.distortions.filter(x => x !== d);
+      else draft.cbt.distortions.push(d);
+      renderCbt();
+    });
+    distWrap.appendChild(btn);
+  });
+}
+
+function saveCbtLog() {
+  const key = todayKey();
+  const existing = state.logs[key] || {};
+  state.logs[key] = { ...existing, cbt: JSON.parse(JSON.stringify(draft.cbt)) };
+  saveLogs();
+  toast('CBT notes saved! 🌱');
+}
+
+function getCycleStats() {
+  const periodStarts = [];
+  const sortedKeys = Object.keys(state.logs).sort();
+  let prevFlow = 'None';
+  sortedKeys.forEach(k => {
+    const log = state.logs[k];
+    if (log.flow && log.flow !== 'None' && prevFlow === 'None') periodStarts.push(k);
+    prevFlow = log.flow || 'None';
+  });
+  let avgCycle = null;
+  if (periodStarts.length >= 2) {
+    const diffs = [];
+    for (let i = 1; i < periodStarts.length; i++) {
+      diffs.push(Math.round((new Date(periodStarts[i]) - new Date(periodStarts[i-1])) / 86400000));
+    }
+    avgCycle = Math.round(diffs.reduce((a,b) => a+b, 0) / diffs.length);
+  }
+  const lastStart = periodStarts[periodStarts.length - 1];
+  let projectedNext = null;
+  if (lastStart && avgCycle) { const d = new Date(lastStart); d.setDate(d.getDate() + avgCycle); projectedNext = d; }
+  return { periodStarts, avgCycle, lastStart, projectedNext };
+}
+
+function isProjectedPeriodDay(dateObj, cycleStats) {
+  if (!cycleStats.projectedNext) return false;
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(cycleStats.projectedNext); d.setDate(d.getDate() + i);
+    if (todayKey(d) === todayKey(dateObj)) return true;
+  }
+  return false;
+}
+
+function renderCalendar() {
+  document.getElementById('calendarMonthLabel').textContent = calendarCursor.toLocaleDateString(undefined, { month:'long', year:'numeric' });
+  const year = calendarCursor.getFullYear(), month = calendarCursor.getMonth();
+  const startOffset = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const grid = document.getElementById('calendarGrid');
+  grid.innerHTML = '';
+  const cycleStats = getCycleStats();
+
+  for (let i = 0; i < startOffset; i++) { const e = document.createElement('div'); e.className = 'cal-day empty'; grid.appendChild(e); }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month, day);
+    const key = todayKey(d);
+    const log = state.logs[key];
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    if (todayKey() === key) cell.classList.add('today-marker');
+    if (log && log.flow && log.flow !== 'None') cell.classList.add('period-day');
+    else if (isProjectedPeriodDay(d, cycleStats)) cell.classList.add('period-day');
+    if (log && log.moodId) {
+      const mood = state.moods.find(m => m.id === log.moodId) || state.moods[2];
+      cell.classList.add('logged'); cell.innerHTML = flowerSVG(mood, 30);
+    } else cell.textContent = day;
+    grid.appendChild(cell);
+  }
+
+  const summary = document.getElementById('cycleSummary');
+  if (cycleStats.avgCycle) {
+    const projText = cycleStats.projectedNext ? cycleStats.projectedNext.toLocaleDateString(undefined, { month:'short', day:'numeric' }) : '—';
+    summary.textContent = `Average cycle length is about ${cycleStats.avgCycle} days. Next period is projected to start around ${projText}. The dashed circles show projected days. 🌷`;
+  } else {
+    summary.textContent = 'Log a few period days and MindBloom will start projecting your next cycle for you! 🌱';
+  }
+}
+
+let moodChartInstance = null, activityChartInstance = null;
+function renderInsights() {
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js did not load — skipping chart rendering.');
+    document.getElementById('statEntries').textContent = Object.keys(state.logs).length;
+    return;
+  }
+  const sortedKeys = Object.keys(state.logs).sort();
+  const last30 = sortedKeys.slice(-30);
+  const labels = last30.map(k => new Date(k).toLocaleDateString(undefined, { month:'short', day:'numeric' }));
+  const moodPoints = last30.map(k => { const log = state.logs[k]; const mood = state.moods.find(m => m.id === log.moodId); return mood ? mood.points : null; });
+  const periodFlags = last30.map(k => state.logs[k].flow && state.logs[k].flow !== 'None');
+  const overlayOn = document.getElementById('periodOverlayToggle').checked;
+
+  const ctx = document.getElementById('moodChart').getContext('2d');
+  if (moodChartInstance) moodChartInstance.destroy();
+  moodChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label:'Mood', data:moodPoints, borderColor:'#2563EB', backgroundColor:'rgba(37,99,235,0.15)', fill:true, tension:0.4, pointBackgroundColor:'#1E3A8A', pointRadius:4 },
+      ...(overlayOn ? [{ label:'Period', data:periodFlags.map(f => f ? 10.5 : null), type:'bar', backgroundColor:'rgba(219,39,119,0.25)', barThickness:'flex' }] : []),
+    ]},
+    options: { responsive:true, scales:{ y:{min:0,max:11,ticks:{stepSize:2},grid:{color:'rgba(30,58,138,0.06)'}}, x:{grid:{display:false}} }, plugins:{legend:{display:overlayOn}} },
+  });
+
+  const actCounts = {};
+  state.activities.forEach(a => actCounts[a.id] = 0);
+  Object.values(state.logs).forEach(log => (log.activities || []).forEach(id => { actCounts[id] = (actCounts[id]||0) + 1; }));
+  const ctx2 = document.getElementById('activityChart').getContext('2d');
+  if (activityChartInstance) activityChartInstance.destroy();
+  activityChartInstance = new Chart(ctx2, {
+    type: 'bar',
+    data: { labels: state.activities.map(a=>a.name), datasets: [{ data: state.activities.map(a=>actCounts[a.id]||0), backgroundColor:'#FDE047', borderRadius:10, borderSkipped:false }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(30,58,138,0.06)'}}, x:{grid:{display:false}} } },
+  });
+
+  document.getElementById('statEntries').textContent = Object.keys(state.logs).length;
+  const avgMoodVal = moodPoints.filter(x => x !== null);
+  document.getElementById('statAvg').textContent = avgMoodVal.length ? (avgMoodVal.reduce((a,b)=>a+b,0)/avgMoodVal.length).toFixed(1) : '0';
+
+  let streak = 0; let cursor = new Date();
+  while (state.logs[todayKey(cursor)]) { streak++; cursor.setDate(cursor.getDate() - 1); }
+  document.getElementById('statStreak').textContent = streak;
+
+  const cycleStats = getCycleStats();
+  document.getElementById('statCycle').textContent = cycleStats.avgCycle ? `${cycleStats.avgCycle}d` : '–';
+}
+
+function launchConfetti(x, y, color) {
+  const canvas = document.getElementById('confettiCanvas');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const particles = []; const colors = [color, '#FDE047', '#2563EB', '#FFFFFF'];
+  for (let i = 0; i < 26; i++) particles.push({ x, y, vx:(Math.random()-0.5)*8, vy:(Math.random()-1.5)*8, size:Math.random()*5+3, color:colors[Math.floor(Math.random()*colors.length)], life:60 });
+  function frame() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive = false;
+    particles.forEach(p => {
+      if (p.life <= 0) return;
+      alive = true; p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.life--;
+      ctx.globalAlpha = Math.max(p.life/60,0); ctx.fillStyle = p.color; ctx.fillRect(p.x,p.y,p.size,p.size);
+    });
+    ctx.globalAlpha = 1;
+    if (alive) requestAnimationFrame(frame); else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  frame();
+}
+
+function renderMoodEditList() {
+  const wrap = document.getElementById('moodEditList');
+  wrap.innerHTML = '';
+  state.moods.forEach((mood, idx) => {
+    const row = document.createElement('div');
+    row.className = 'mood-edit-row';
+    row.innerHTML = `<input type="color" value="${mood.color}" data-idx="${idx}" class="mood-color-input"><input type="text" value="${mood.name}" data-idx="${idx}" class="mood-name-input"><input type="number" value="${mood.points}" min="1" max="10" data-idx="${idx}" class="mood-points-input">`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('.mood-color-input').forEach(el => el.addEventListener('input', e => { state.moods[+e.target.dataset.idx].color = e.target.value; saveSettings(); renderToday(); }));
+  wrap.querySelectorAll('.mood-name-input').forEach(el => el.addEventListener('input', e => { state.moods[+e.target.dataset.idx].name = e.target.value; saveSettings(); renderToday(); }));
+  wrap.querySelectorAll('.mood-points-input').forEach(el => el.addEventListener('input', e => { state.moods[+e.target.dataset.idx].points = Math.max(1, Math.min(10, +e.target.value || 1)); saveSettings(); renderInsights(); }));
+}
+
+function renderActivityEditList() {
+  const wrap = document.getElementById('activityEditList');
+  wrap.innerHTML = '';
+  state.activities.forEach((act, idx) => {
+    const row = document.createElement('div');
+    row.className = 'activity-edit-row';
+    row.innerHTML = `<i data-lucide="${act.icon}" style="width:1rem;height:1rem;color:#1E3A8A"></i><input type="text" value="${act.name}" data-idx="${idx}" class="activity-name-input"><button class="icon-x-btn" data-idx="${idx}"><i data-lucide="x" style="width:1rem;height:1rem"></i></button>`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('.activity-name-input').forEach(el => el.addEventListener('input', e => { state.activities[+e.target.dataset.idx].name = e.target.value; saveSettings(); renderToday(); }));
+  wrap.querySelectorAll('.icon-x-btn').forEach(el => el.addEventListener('click', e => { const idx = +e.currentTarget.dataset.idx; state.activities.splice(idx,1); saveSettings(); renderActivityEditList(); renderToday(); safeLucide(); }));
+  safeLucide();
+}
+
+const ICON_POOL = ['briefcase','dumbbell','book-open','moon','pizza','users','trees','sparkles','music','coffee','camera','palette','gamepad-2','plane','heart','sun','cloud-rain','bike','film','utensils'];
+function addCustomActivity() {
+  const name = prompt('Name your new activity:');
+  if (!name) return;
+  const icon = ICON_POOL[Math.floor(Math.random()*ICON_POOL.length)];
+  const colors = ['#DBEAFE','#DCFCE7','#FEF3C7','#E0E7FF','#FFE4E6','#FCE7F3','#D1FAE5','#FEF9C3'];
+  state.activities.push({ id:'custom_'+Date.now(), name, icon, color: colors[Math.floor(Math.random()*colors.length)] });
+  saveSettings(); renderToday(); renderActivityEditList();
+}
+
+function switchView(view) {
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.add('hidden'));
+  document.getElementById('view-' + view).classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  if (view === 'period') { renderPeriod(); renderCalendar(); }
+  if (view === 'cbt') renderCbt();
+  if (view === 'insights') renderInsights();
+}
+
+function exportData() {
+  const payload = { logs: state.logs, moods: state.moods, activities: state.activities, theme: state.theme, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `mindbloom-export-${todayKey()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast('Exported! 💾');
+}
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.logs) state.logs = data.logs;
+      if (data.moods) state.moods = data.moods;
+      if (data.activities) state.activities = data.activities;
+      if (data.theme) state.theme = data.theme;
+      saveLogs(); saveSettings(); applyTheme();
+      loadDraftFromLog(todayKey());
+      renderToday(); renderCalendar(); renderInsights(); renderMoodEditList(); renderActivityEditList();
+      toast('Imported successfully! 🎉');
+    } catch (err) { toast('Could not read that file 😕'); }
+  };
+  reader.readAsText(file);
+}
+
+function bindAllControls() {
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+  document.getElementById('saveLogBtn').addEventListener('click', saveTodayLog);
+  document.getElementById('addActivityBtn').addEventListener('click', addCustomActivity);
+  document.getElementById('exportHeroBtn').addEventListener('click', exportData);
+  document.getElementById('savePeriodBtn').addEventListener('click', savePeriodLog);
+  document.getElementById('saveCbtBtn').addEventListener('click', saveCbtLog);
+
+  document.getElementById('prevMonthBtn').addEventListener('click', () => { calendarCursor.setMonth(calendarCursor.getMonth()-1); renderCalendar(); });
+  document.getElementById('nextMonthBtn').addEventListener('click', () => { calendarCursor.setMonth(calendarCursor.getMonth()+1); renderCalendar(); });
+  document.getElementById('periodOverlayToggle').addEventListener('change', renderInsights);
+
+  const dropZone = document.getElementById('dropZone');
+  const photoInput = document.getElementById('photoInput');
+  dropZone.addEventListener('click', () => photoInput.click());
+  photoInput.addEventListener('change', (e) => handlePhotoFile(e.target.files[0]));
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handlePhotoFile(e.dataTransfer.files[0]); });
+  document.getElementById('removePhotoBtn').addEventListener('click', () => { draft.photo = null; renderToday(); });
+
+  document.getElementById('settingsBtn').addEventListener('click', () => document.getElementById('settingsOverlay').classList.remove('hidden'));
+  document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsOverlay').classList.add('hidden'));
+  document.getElementById('settingsOverlay').addEventListener('click', (e) => { if (e.target.id === 'settingsOverlay') e.target.classList.add('hidden'); });
+
+  ['colorCanvas','colorContainer','colorPrimary','colorAccent'].forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+      const map = { colorCanvas:'canvas', colorContainer:'container', colorPrimary:'primary', colorAccent:'accent' };
+      state.theme[map[id]] = e.target.value; applyTheme(); saveSettings();
+    });
+  });
+  document.getElementById('resetThemeBtn').addEventListener('click', () => { state.theme = {...DEFAULT_THEME}; applyTheme(); saveSettings(); toast('Theme reset 🌼'); });
+
+  document.getElementById('exportBtn').addEventListener('click', exportData);
+  document.getElementById('importInput').addEventListener('change', (e) => { if (e.target.files[0]) importData(e.target.files[0]); });
+  document.getElementById('clearDataBtn').addEventListener('click', () => {
+    if (confirm('This will erase all your logs and settings. Are you sure?')) {
+      localStorage.removeItem(LS_KEYS.logs); localStorage.removeItem(LS_KEYS.settings); location.reload();
+    }
+  });
+
+  window.addEventListener('resize', () => { const c = document.getElementById('confettiCanvas'); c.width = window.innerWidth; c.height = window.innerHeight; });
+}
+
+function init() {
+  // Bind every button/control FIRST. This guarantees all buttons work
+  // even if rendering or the icon library has trouble afterward.
+  try { bindAllControls(); } catch (e) { console.error('Control binding error:', e); }
+
+  try { loadState(); } catch (e) { console.error('Load state error:', e); }
+  try { loadDraftFromLog(todayKey()); } catch (e) { console.error('Load draft error:', e); }
+  try { renderToday(); } catch (e) { console.error('Render today error:', e); }
+  try { renderCalendar(); } catch (e) { console.error('Render calendar error:', e); }
+  try { renderMoodEditList(); } catch (e) { console.error('Render mood edit error:', e); }
+  try { renderActivityEditList(); } catch (e) { console.error('Render activity edit error:', e); }
+
+  safeLucide();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
